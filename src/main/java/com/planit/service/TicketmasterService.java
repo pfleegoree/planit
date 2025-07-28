@@ -31,53 +31,60 @@ public class TicketmasterService {
 
     @PostConstruct
     public void fetchAndSaveEvents() {
-        String city = "Austin";
-        String genre = "Rock";
+        try {
+            String uri = UriComponentsBuilder
+                    .fromUriString(baseUrl)
+                    .queryParam("apikey", apiKey)
+                    .queryParam("city", "Austin")
+                    .queryParam("classificationName", "Rock")
+                    .queryParam("size", 10)
+                    .toUriString();
 
-        String uri = UriComponentsBuilder.fromUriString(baseUrl)
-                .queryParam("apikey", apiKey)
-                .queryParam("city", city)
-                .queryParam("classificationName", genre)
-                .queryParam("size", 10)
-                .toUriString();
+            // Log raw response for debugging
+            Map<String, Object> tmResponse = restTemplate.getForObject(uri, Map.class);
+            System.out.println("🎟️ Raw TM response: " + tmResponse);
 
-        Map response = restTemplate.getForObject(uri, Map.class);
+            if (tmResponse != null && tmResponse.containsKey("_embedded")) {
+                Map<String,Object> embeddedRoot = (Map<String,Object>) tmResponse.get("_embedded");
+                List<Map<String,Object>> events = (List<Map<String,Object>>) embeddedRoot.get("events");
 
-        if (response != null && response.containsKey("_embedded")) {
-            List<Map<String, Object>> events = (List<Map<String, Object>>)
-                    ((Map<String, Object>) response.get("_embedded")).get("events");
+                List<Event> toSave = new ArrayList<>();
+                for (Map<String,Object> e : events) {
+                    Event event = new Event();
+                    event.setTitle((String) e.get("name"));
+                    event.setGenre("Rock");
+                    event.setCity("Austin");
+                    event.setUrl((String) e.get("url"));
 
-            List<Event> toSave = new ArrayList<>();
-
-            for (Map<String, Object> e : events) {
-                Event event = new Event();
-                event.setTitle((String) e.get("name"));
-                event.setGenre(genre);
-                event.setCity(city);
-                event.setUrl((String) e.get("url"));
-
-                List<Map<String, Object>> venues = (List<Map<String, Object>>)
-                        ((Map<String, Object>) ((List<?>) e.get("_embedded.venues")).get(0));
-                if (venues != null && !venues.isEmpty()) {
-                    event.setVenue((String) venues.get(0).get("name"));
-                }
-
-                Map<String, Object> dates = (Map<String, Object>) e.get("dates");
-                Map<String, Object> start = (Map<String, Object>) dates.get("start");
-
-                if (start != null) {
-                    String dateTime = (String) start.get("dateTime");
-                    if (dateTime != null) {
-                        LocalDateTime startTime = LocalDateTime.parse(dateTime.replace("Z", ""));
-                        event.setStartTime(startTime);
-                        event.setEndTime(startTime.plusHours(2));
+                    // ← Defensively parse venue
+                    Map<String,Object> embedded = (Map<String,Object>) e.get("_embedded");
+                    if (embedded != null && embedded.get("venues") instanceof List) {
+                        List<Map<String,Object>> venues = (List<Map<String,Object>>) embedded.get("venues");
+                        if (!venues.isEmpty()) {
+                            event.setVenue((String) venues.get(0).get("name"));
+                        }
                     }
+
+                    // ← Defensively parse dates
+                    Map<String,Object> dates = (Map<String,Object>) e.get("dates");
+                    if (dates != null && dates.get("start") instanceof Map) {
+                        Map<String,Object> start = (Map<String,Object>) dates.get("start");
+                        String dateTime = (String) start.get("dateTime");
+                        if (dateTime != null) {
+                            LocalDateTime startTime = LocalDateTime.parse(dateTime.replace("Z",""));
+                            event.setStartTime(startTime);
+                            event.setEndTime(startTime.plusHours(2));
+                        }
+                    }
+
+                    toSave.add(event);
                 }
-
-                toSave.add(event);
+                eventRepository.saveAll(toSave);
             }
-
-            eventRepository.saveAll(toSave);
+        } catch (Exception ex) {
+            System.err.println("❌ TM fetch failed: " + ex.getMessage());
         }
     }
 }
+
+

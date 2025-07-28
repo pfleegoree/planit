@@ -4,6 +4,7 @@ import com.planit.model.Event;
 import com.planit.repository.EventRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -30,13 +31,18 @@ public class TicketmasterService {
     }
 
     @PostConstruct
+    public void logKey() {
+        System.out.println("🔑 Using Ticketmaster API key: " + apiKey);
+    }
+
+    @Scheduled(cron = "0 0 * * * *")
     public void fetchAndSaveEvents() {
         try {
             String uri = UriComponentsBuilder
                     .fromUriString(baseUrl)
                     .queryParam("apikey", apiKey)
                     .queryParam("city", "Austin")
-                    .queryParam("classificationName", "Rock")
+                    .queryParam("classifzicationName", "Rock")
                     .queryParam("size", 10)
                     .toUriString();
 

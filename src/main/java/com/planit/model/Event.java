@@ -1,5 +1,6 @@
 package com.planit.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder // This one line replaces getters, setters, toString, equals, and hashCode
+@Builder
 public class Event {
 
     @Id
@@ -31,4 +32,8 @@ public class Event {
     private LocalDateTime endTime;
 
     private String url;
+
+    // ← NEW: top-level category (e.g. “Music”, “Sports”, “Arts”)
+    @Column(nullable = false)
+    private String category;
 }

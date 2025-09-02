@@ -1,27 +1,48 @@
+// src/App.jsx
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
-import { format, parseISO, startOfWeek, getDay } from 'date-fns'
+import { format, parseISO, startOfWeek, getDay, addWeeks } from 'date-fns' // addWeeks used
 import { toZonedTime } from 'date-fns-tz'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
-const locales = {
-  'en-US': require('date-fns/locale/en-US'),
-}
+import planitLogo from './icons/planit-p.svg' // if you use the logo import from earlier
+
+const BRAND_YELLOW = '#FDE68A'
+const BRAND_TEXT_DARK = '#0B1220'
+
+const locales = { 'en-US': require('date-fns/locale/en-US') }
 const localizer = dateFnsLocalizer({ format, parse: parseISO, startOfWeek, getDay, locales })
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-// hard-coded these for MVP;
-const ALL_CATEGORIES = ['Music', 'Sports']
-const GENRES_BY_CATEGORY = {
-  Music:    ['Rock', 'Jazz', 'Hip Hop', 'Latin Music'],
-  Sports:   ['Football', 'Basketball', 'Soccer', 'Baseball']
-}
-
 export default function App() {
-  const [allEvents, setAllEvents]           = useState([])
-  const [category, setCategory]             = useState(ALL_CATEGORIES[0])
-  const [selectedGenres, setSelectedGenres] = useState([])
+  const [allEvents, setAllEvents]                   = useState([])
+  const [categories, setCategories]                 = useState(['All'])
+  const [category, setCategory]                     = useState('All')
+  const [selectedByCategory, setSelectedByCategory] = useState({})
+
+  // NEW: control visible date (the calendar will center this date)
+  const [currentDate, setCurrentDate] = useState(new Date())
+
+  const selectedGenres = selectedByCategory[category] || []
+
+  const genresForCurrentCategory = Array.from(
+    new Set(
+      allEvents
+        .filter(e => category === 'All' || e.category === category)
+        .map(e => e.genre)
+    )
+  ).filter(Boolean)
+
+  function toggleGenre(genre) {
+    setSelectedByCategory(prev => {
+      const current = prev[category] || []
+      const next = current.includes(genre)
+        ? current.filter(g => g !== genre)
+        : [...current, genre]
+      return { ...prev, [category]: next }
+    })
+  }
 
   useEffect(() => {
     axios.get('/api/events')
@@ -34,90 +55,109 @@ export default function App() {
             return {
               id:       evt.id,
               title:    evt.title,
-              category: evt.category,
+              category: evt.category || 'Uncategorized',
               genre:    evt.genre,
               start:    toZonedTime(utcStart, tz),
               end:      toZonedTime(utcEnd,   tz),
               allDay:   false,
             }
           })
+
         setAllEvents(mapped)
+
+        const catsFromData = Array.from(new Set(mapped.map(e => e.category))).filter(Boolean)
+        setCategories(['All', ...catsFromData])
+
+        if (!catsFromData.includes(category) && category !== 'All') {
+          setCategory('All')
+        }
       })
-      .catch(console.error)
-  }, [])
+      .catch(err => console.error('GET /api/events failed:', err))
+  }, []) // load once
 
-  // toggle a genre on/off
-  function toggleGenre(genre) {
-    setSelectedGenres(gs =>
-      gs.includes(genre)
-        ? gs.filter(g => g !== genre)
-        : [...gs, genre]
-    )
+  // Client-side filtering
+  const filteredEvents = allEvents.filter(evt => {
+    const categoryMatch = category === 'All' || evt.category === category
+    const genreMatch    = selectedGenres.length === 0 || selectedGenres.includes(evt.genre)
+    return categoryMatch && genreMatch
+  })
+
+  // NAVIGATION helpers (week +/- 1)
+  function goPrevWeek() {
+    setCurrentDate(prev => addWeeks(prev, -1))
   }
-
-
-  const filteredEvents = allEvents.filter(evt =>
-    evt.category === category
-    && (
-      selectedGenres.length === 0
-      || selectedGenres.includes(evt.genre)
-    )
-  )
+  function goNextWeek() {
+    setCurrentDate(prev => addWeeks(prev, 1))
+  }
+  function goToday() {
+    setCurrentDate(new Date())
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
       <div style={{ flex: 1, padding: 20 }}>
-        <h1>PlanIT Weekly Calendar</h1>
-        <Calendar
-          localizer={localizer}
-          events={filteredEvents}
-          defaultView={Views.WEEK}
-          views={[Views.WEEK]}
-          step={30}
-          showMultiDayTimes
-          defaultDate={new Date()}
-          style={{ height: '90%' }}
-        />
+        {/* Logo + heading + nav controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <img src={planitLogo} alt="PlanIT" style={{ width: 64, height: 64, borderRadius: 10 }} />
+          <h1 style={{ margin: 0 }}>PlanIT Weekly Calendar</h1>
+
+          {/* Buttons row */}
+          <div style={{ marginLeft: 20, display: 'flex', gap: 8 }}>
+            <button onClick={goToday} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ddd', background: '#fff' }}>Today</button>
+            <button onClick={goPrevWeek} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ddd', background: '#fff' }}>Back</button>
+            <button onClick={goNextWeek} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ddd', background: '#fff' }}>Next</button>
+          </div>
+        </div>
+
+       <Calendar
+         localizer={localizer}
+         events={filteredEvents}
+         defaultView={Views.WEEK}
+         views={[Views.WEEK]}
+         step={30}
+         showMultiDayTimes
+         date={currentDate}
+         onNavigate={date => setCurrentDate(date)}
+         toolbar={false}
+         style={{ height: '90%' }}
+       />
       </div>
 
-      <div style={{
-        width: 240,
-        borderLeft: '1px solid #ddd',
-        padding: 20,
-        boxSizing: 'border-box'
-      }}>
-        <h2>Choose a category</h2>
+      <div style={{ width: 260, borderLeft: '1px solid #ddd', padding: 20, boxSizing: 'border-box' }}>
+        <h2>Category</h2>
         <select
           value={category}
           onChange={e => setCategory(e.target.value)}
-          style={{ width: '100%', marginBottom: 20 }}
+          style={{ width: '100%', marginBottom: 16 }}
         >
-          {ALL_CATEGORIES.map(cat =>
-            <option key={cat} value={cat}>{cat}</option>
-          )}
+          {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
 
-        <h3>Pick one or more genres</h3>
-        {GENRES_BY_CATEGORY[category].map(genre =>
-          <button
-            key={genre}
-            onClick={() => toggleGenre(genre)}
-            style={{
-              display: 'block',
-              width: '100%',
-              textAlign: 'left',
-              margin: '4px 0',
-              padding: '8px',
-              background: selectedGenres.includes(genre) ? '#2563eb' : '#e5e7eb',
-              color: selectedGenres.includes(genre) ? 'white' : 'black',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer'
-            }}
-          >
-            {genre}
-          </button>
-        )}
+        <h3>Genres</h3>
+        {genresForCurrentCategory.length === 0 && <div style={{color:'#666'}}>No genres for this selection.</div>}
+        {genresForCurrentCategory.map(genre => {
+          const isSelected = selectedGenres.includes(genre)
+          return (
+            <button
+              key={genre}
+              onClick={() => toggleGenre(genre)}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                margin: '4px 0',
+                padding: '8px',
+                background: isSelected ? BRAND_YELLOW : '#e5e7eb',
+                color: isSelected ? BRAND_TEXT_DARK : 'black',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer'
+              }}
+            >
+              {genre}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

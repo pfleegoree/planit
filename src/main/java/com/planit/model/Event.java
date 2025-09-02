@@ -10,30 +10,28 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Event {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class Event {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true)
+    private String ticketmasterId;
+
     private String title;
-    private String genre;
-    private String city;
-    private String venue;
-
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-
-    private String url;
-
-    // ← NEW: top-level category (e.g. “Music”, “Sports”, “Arts”)
-    @Column(nullable = false)
     private String category;
+    private String genre;
+    private String startTime; // ISO string: 2026-02-20T01:30:00Z
+    private String endTime;
+    private String url;
+    private String venueName;
+    private String latitude;
+    private String longitude;
+
 }
+

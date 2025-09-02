@@ -1,0 +1,6 @@
+<!-- src/icons/planit-p.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+    <circle cx="100" cy="100" r="68" fill="#1F2937"/>
+    <circle cx="100" cy="100" r="56" fill="#FDE68A"/>
+    <text x="100" y="118" font-family="Inter, Arial" font-size="68" font-weight="700" text-anchor="middle" fill="#0B1220">P</text>
+</svg>

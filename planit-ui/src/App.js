@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
-import { format, parseISO, startOfWeek, getDay, addWeeks } from 'date-fns' // addWeeks used
+import { format, parseISO, startOfWeek, getDay, addWeeks } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
-import planitLogo from './icons/planit-p.svg' // if you use the logo import from earlier
+import planitLogo from './icons/planit-p.svg'
 
 const BRAND_YELLOW = '#FDE68A'
 const BRAND_TEXT_DARK = '#0B1220'
@@ -14,6 +14,8 @@ const BRAND_TEXT_DARK = '#0B1220'
 const locales = { 'en-US': require('date-fns/locale/en-US') }
 const localizer = dateFnsLocalizer({ format, parse: parseISO, startOfWeek, getDay, locales })
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
 export default function App() {
   const [allEvents, setAllEvents]                   = useState([])
@@ -83,15 +85,46 @@ export default function App() {
   })
 
   // NAVIGATION helpers (week +/- 1)
-  function goPrevWeek() {
-    setCurrentDate(prev => addWeeks(prev, -1))
+  function goPrevWeek() { setCurrentDate(prev => addWeeks(prev, -1)) }
+  function goNextWeek() { setCurrentDate(prev => addWeeks(prev, 1)) }
+  function goToday() { setCurrentDate(new Date()) }
+
+  // ----------- dynamic min/max/scrollToTime based on filteredEvents -------------
+  const DEFAULT_MIN_HOUR = 8   // fallback start hour
+  const DEFAULT_MAX_HOUR = 22  // fallback end hour
+  const HOUR_BUFFER = 1        // extra hour padding
+
+  let earliestHour = 24
+  let latestHour = -1
+
+  filteredEvents.forEach(evt => {
+    if (evt.start instanceof Date) {
+      const sh = evt.start.getHours()
+      earliestHour = Math.min(earliestHour, sh)
+    }
+    if (evt.end instanceof Date) {
+      const eh = evt.end.getHours()
+      if (evt.end.getMinutes() > 0) latestHour = Math.max(latestHour, eh + 1)
+      else latestHour = Math.max(latestHour, eh)
+    }
+  })
+
+  const minHour = earliestHour <= 23 ? clamp(earliestHour - HOUR_BUFFER, 0, 23) : DEFAULT_MIN_HOUR
+  const maxHour = latestHour >= 0 ? clamp(latestHour + HOUR_BUFFER, 1, 24) : DEFAULT_MAX_HOUR
+
+  const dayForMinMax = new Date(currentDate) // use currently-centered day
+  const minDate = new Date(dayForMinMax)
+  minDate.setHours(minHour, 0, 0, 0)
+
+  const maxDate = new Date(dayForMinMax)
+  if (maxHour >= 24) {
+    maxDate.setHours(23, 59, 59, 999)
+  } else {
+    maxDate.setHours(maxHour, 0, 0, 0)
   }
-  function goNextWeek() {
-    setCurrentDate(prev => addWeeks(prev, 1))
-  }
-  function goToday() {
-    setCurrentDate(new Date())
-  }
+
+  const scrollToTime = minDate
+  // ---------------------------------------------------------------------------
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
@@ -119,6 +152,9 @@ export default function App() {
          date={currentDate}
          onNavigate={date => setCurrentDate(date)}
          toolbar={false}
+         min={minDate}
+         max={maxDate}
+         scrollToTime={scrollToTime}
          style={{ height: '90%' }}
        />
       </div>

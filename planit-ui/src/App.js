@@ -48,8 +48,6 @@ export default function App() {
 
   const API = process.env.REACT_APP_API_URL || '';
 
-   const API = process.env.REACT_APP_API_URL || '';
-
    useEffect(() => {
      const fetchEvents = async () => {
        try {

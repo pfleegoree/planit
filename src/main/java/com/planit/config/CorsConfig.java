@@ -14,7 +14,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
                         .allowedOrigins(
-                                "https://YOUR-NETLIFY-SITE.netlify.app",
+                                "https://merry-meerkat-d0b749.netlify.app/",
                                 "http://localhost:3000"                  // optional local dev
                         )
                         .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")

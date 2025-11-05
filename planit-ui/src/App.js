@@ -46,30 +46,39 @@ export default function App() {
     })
   }
 
+  const API = process.env.REACT_APP_API_URL || '';
+
+   const API = process.env.REACT_APP_API_URL || '';
+
    useEffect(() => {
-      axios.get('/api/events')
-        .then(res => {
-          const mapped = res.data
-            .filter(evt => evt.startTime && evt.endTime)
-            .map(evt => {
-              const utcStart = parseISO(evt.startTime + 'Z')
-              const utcEnd   = parseISO(evt.endTime   + 'Z')
-              return {
-                id:       evt.id,
-                title:    evt.title,
-                category: evt.category || 'Uncategorized',
-                genre:    evt.genre,
-                start:    toZonedTime(utcStart, tz),
-                end:      toZonedTime(utcEnd,   tz),
-                allDay:   false,
-              }
-            })
+     const fetchEvents = async () => {
+       try {
+         const { data } = await axios.get(`${API}/api/events`);
+         const mapped = data
+           .filter(evt => evt.startTime && evt.endTime)
+           .map(evt => {
+             const utcStart = parseISO(evt.startTime + 'Z');
+             const utcEnd   = parseISO(evt.endTime   + 'Z');
+             return {
+               id:       evt.id,
+               title:    evt.title,
+               category: evt.category || 'Uncategorized',
+               genre:    evt.genre,
+               start:    toZonedTime(utcStart, tz),
+               end:      toZonedTime(utcEnd,   tz),
+               allDay:   false,
+             };
+           });
 
+         setAllEvents(mapped);
+       } catch (err) {
+         console.error('GET /api/events failed:', err);
+       }
+     };
 
-        setAllEvents(mapped)
-      })
-      .catch(err => console.error('GET /api/events failed:', err))
-  }, []) // load once
+     fetchEvents();
+   }, [API]); // safe to include API; it's stable
+
 
    // Recompute categories whenever events change; reset invalid selection
    useEffect(() => {

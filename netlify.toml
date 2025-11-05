@@ -7,6 +7,8 @@ publish = "build"
 NODE_VERSION = "18"
 
 [[redirects]]
-from = "/*"
-to = "/index.html"
+from = "/api/*"
+to = "https://YOUR-BACKEND-HOST/api/:splat"
 status = 200
+force = true
+

@@ -48,35 +48,53 @@ export default function App() {
 
   const API = process.env.REACT_APP_API_URL || '';
 
-   useEffect(() => {
-     const fetchEvents = async () => {
-       try {
-         const { data } = await axios.get(`${API}/api/events`);
-         const mapped = data
-           .filter(evt => evt.startTime && evt.endTime)
-           .map(evt => {
-             const utcStart = parseISO(evt.startTime + 'Z');
-             const utcEnd   = parseISO(evt.endTime   + 'Z');
-             return {
-               id:       evt.id,
-               title:    evt.title,
-               category: evt.category || 'Uncategorized',
-               genre:    evt.genre,
-               start:    toZonedTime(utcStart, tz),
-               end:      toZonedTime(utcEnd,   tz),
-               allDay:   false,
-             };
-           });
-            console.log('API base:', API);
-            console.log('events raw:', data);
-         setAllEvents(mapped);
-       } catch (err) {
-         console.error('GET /api/events failed:', err);
-       }
-     };
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const candidates = [
+        `${API}/api/events`,
+        `${API}/events`,
+        `${API}/api/v1/events`
+      ];
+      let list = [];
 
-     fetchEvents();
-   }, [API]); // safe to include API; it's stable
+      for (const url of candidates) {
+        try {
+          const { data } = await axios.get(url);
+          const arr =
+            Array.isArray(data) ? data :
+            Array.isArray(data.events) ? data.events :
+            Array.isArray(data.content) ? data.content : [];
+          if (arr.length || data) {
+            console.log('Using endpoint:', url);
+            list = arr;
+            break;
+          }
+        } catch (e) {
+          console.log('Tried:', url, '→', e?.response?.status || e.message);
+        }
+      }
+
+      const mapped = list
+        .filter(evt => evt?.startTime && evt?.endTime)
+        .map(evt => {
+          const utcStart = parseISO(evt.startTime + 'Z');
+          const utcEnd   = parseISO(evt.endTime   + 'Z');
+          return {
+            id:       evt.id,
+            title:    evt.title,
+            category: evt.category || 'Uncategorized',
+            genre:    evt.genre,
+            start:    toZonedTime(utcStart, tz),
+            end:      toZonedTime(utcEnd,   tz),
+            allDay:   false,
+          };
+        });
+
+      setAllEvents(mapped);
+    };
+    fetchEvents();
+  }, [API]);
+
 
 
    // Recompute categories whenever events change; reset invalid selection

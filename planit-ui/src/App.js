@@ -67,7 +67,8 @@ export default function App() {
                allDay:   false,
              };
            });
-
+            console.log('API base:', API);
+            console.log('events raw:', data);
          setAllEvents(mapped);
        } catch (err) {
          console.error('GET /api/events failed:', err);

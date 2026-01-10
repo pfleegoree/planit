@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "https://YOUR-NETLIFY-SITE.netlify.app"
+})
 @RestController
 @RequestMapping("/api")
 public class EventController {

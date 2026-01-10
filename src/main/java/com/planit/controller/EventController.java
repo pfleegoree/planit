@@ -5,10 +5,7 @@ import com.planit.repository.EventRepository;
 import com.planit.service.TicketmasterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,9 +55,13 @@ public class EventController {
         return eventRepository.findByGenreIn(genres);
     }
 
-    @GetMapping("/fetch-events")
-    public ResponseEntity<String> fetchNow() {
+    @PostMapping("/fetch-events")
+    public ResponseEntity<String> fetchNow(@RequestHeader("X-Admin-Token") String token) {
+        if (!token.equals(System.getenv("ADMIN_TOKEN"))) {
+            return ResponseEntity.status(403).body("Forbidden");
+        }
         ticketmasterService.fetchAndSaveEvents();
         return ResponseEntity.ok("Ticketmaster fetch triggered");
     }
+
 }

@@ -50,35 +50,42 @@ export default function App() {
 
   useEffect(() => {
     const fetchEvents = async () => {
-      const candidates = [
-        `${API}/api/events`,
-        `${API}/events`,
-        `${API}/api/v1/events`
-      ];
-      let list = [];
+      const eventsUrl = `${API}/api/events`;
 
-      for (const url of candidates) {
+      // 1. try to load existing events
+      let list = [];
+      try {
+        const { data } = await axios.get(eventsUrl);
+        list = Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.log("Initial fetch failed:", e.message);
+      }
+
+      // 2. if empty → trigger backend ingest
+      if (!list || list.length === 0) {
+        console.log("DB empty → triggering Ticketmaster fetch");
+
         try {
-          const { data } = await axios.get(url);
-          const arr =
-            Array.isArray(data) ? data :
-            Array.isArray(data.events) ? data.events :
-            Array.isArray(data.content) ? data.content : [];
-          if (arr.length || data) {
-            console.log('Using endpoint:', url);
-            list = arr;
-            break;
-          }
+          await axios.post(`${API}/api/admin/fetch-events`);
         } catch (e) {
-          console.log('Tried:', url, '→', e?.response?.status || e.message);
+          console.log("Fetch-events failed:", e.message);
+        }
+
+        // 3. fetch again after ingest
+        try {
+          const { data } = await axios.get(eventsUrl);
+          list = Array.isArray(data) ? data : [];
+        } catch (e) {
+          console.log("Second fetch failed:", e.message);
         }
       }
 
+      // 4. map to calendar format
       const mapped = list
         .filter(evt => evt?.startTime && evt?.endTime)
         .map(evt => {
-          const utcStart = parseISO(evt.startTime + 'Z');
-          const utcEnd   = parseISO(evt.endTime   + 'Z');
+          const utcStart = parseISO(evt.startTime);
+          const utcEnd   = parseISO(evt.endTime);
           return {
             id:       evt.id,
             title:    evt.title,

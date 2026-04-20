@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.planit.model.Event;
 import com.planit.repository.EventRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -16,18 +16,17 @@ import java.util.Iterator;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class EventbriteService {
 
     private final RestTemplate rest = new RestTemplate();
     private final ObjectMapper mapper = new ObjectMapper();
-
-    @Autowired
-    private EventRepository eventRepository;
+    private final EventRepository eventRepository;
 
     @Value("${eventbrite.base.url}")
     private String baseUrl;
 
-    @Value("${eventbrite.token}")
+    @Value("${eventbrite.token:}")
     private String eventbriteToken;
 
     public void fetchAndSaveEvents() {

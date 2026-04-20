@@ -71,15 +71,22 @@ public class TicketmasterService {
         String tmId = e.path("id").asText(null);
         if (tmId == null) return;
 
-        Optional<Event> maybeExisting = eventRepository.findByTicketmasterId(tmId);
+        Optional<Event> maybeExisting =
+                eventRepository.findByProviderAndExternalId("TICKETMASTER", tmId);
+
         Event event = maybeExisting.orElseGet(Event::new);
 
-        // map basic fields
+        // identity fields
+        event.setProvider("TICKETMASTER");
+        event.setExternalId(tmId);
+
+        // keep temporarily for backward compatibility
         event.setTicketmasterId(tmId);
+
+        // basic fields
         event.setTitle(safeText(e.path("name")));
         event.setUrl(safeText(e.path("url")));
 
-        // classification -> category/genre (take first classification if present)
         JsonNode classifications = e.path("classifications");
         if (classifications.isArray() && classifications.size() > 0) {
             JsonNode c = classifications.get(0);
@@ -87,42 +94,41 @@ public class TicketmasterService {
             event.setGenre(safeText(c.path("genre").path("name")));
         }
 
-        // venue info (first embedded venue)
         JsonNode venues = e.path("_embedded").path("venues");
         if (venues.isArray() && venues.size() > 0) {
             JsonNode v = venues.get(0);
             event.setVenueName(safeText(v.path("name")));
 
-            // coordinates if present
             JsonNode loc = v.path("location");
             if (loc != null && !loc.isMissingNode() && !loc.isNull()) {
-                // If your Event stores lat/long as Strings:
                 if (loc.hasNonNull("latitude")) {
-                    event.setLatitude(loc.path("latitude").asText(null));   // change to asDouble() if your entity expects double
+                    event.setLatitude(loc.path("latitude").asText(null));
                 }
                 if (loc.hasNonNull("longitude")) {
-                    event.setLongitude(loc.path("longitude").asText(null));  // change to asDouble() if your entity expects double
+                    event.setLongitude(loc.path("longitude").asText(null));
                 }
             }
         }
 
-        // dates -> start (prefer ISO dateTime; fall back to localDate + localTime + timezone)
         JsonNode startNode = e.path("dates").path("start");
         Instant startInstant = null;
+
         if (startNode.hasNonNull("dateTime")) {
             String dt = startNode.path("dateTime").asText(null);
             if (dt != null) {
                 try {
                     startInstant = Instant.parse(dt);
                 } catch (Exception ex) {
-                    // occasionally dateTime might include offset rather than Z, Instant.parse handles offsets too.
                     ex.printStackTrace();
                 }
             }
         } else if (startNode.hasNonNull("localDate")) {
             String localDate = startNode.path("localDate").asText(null);
-            String localTime = startNode.hasNonNull("localTime") ? startNode.path("localTime").asText("00:00:00") : "00:00:00";
+            String localTime = startNode.hasNonNull("localTime")
+                    ? startNode.path("localTime").asText("00:00:00")
+                    : "00:00:00";
             String tz = e.path("dates").path("timezone").asText("UTC");
+
             if (localDate != null) {
                 try {
                     LocalDate ld = LocalDate.parse(localDate);
@@ -136,10 +142,8 @@ public class TicketmasterService {
         }
 
         if (startInstant != null) {
-            // store as an ISO instant (with Z). This is recommended.
-            event.setStartTime(startInstant.toString()); // e.g. 2026-02-20T01:30:00Z
+            event.setStartTime(startInstant.toString());
 
-            // end time: TM often doesn't provide end -> use end if available, else +2 hours default
             Instant endInstant = null;
             JsonNode endNode = e.path("dates").path("end");
             if (endNode != null && endNode.hasNonNull("dateTime")) {
@@ -147,17 +151,17 @@ public class TicketmasterService {
                     endInstant = Instant.parse(endNode.path("dateTime").asText());
                 } catch (Exception ignore) {}
             }
+
             if (endInstant == null) {
                 endInstant = startInstant.plus(Duration.ofHours(2));
             }
+
             event.setEndTime(endInstant.toString());
         } else {
-            // no usable start -> clear or skip saving as you prefer
             event.setStartTime(null);
             event.setEndTime(null);
         }
 
-        // persist
         eventRepository.save(event);
     }
 

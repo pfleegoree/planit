@@ -10,5 +10,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByCategoryIn(List<String> categories);
     List<Event> findByGenreIn(List<String> genres);
     List<Event> findByCategoryInAndGenreIn(List<String> categories, List<String> genres);
+    Optional<Event> findByProviderAndExternalId(String provider, String externalId);
+
+    // keep temporarily during migration
     Optional<Event> findByTicketmasterId(String ticketmasterId);
 }

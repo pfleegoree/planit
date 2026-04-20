@@ -1,27 +1,36 @@
 package com.planit.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Table(
+        name = "event",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_provider_external_id", columnNames = {"provider", "external_id"})
+        }
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-
 public class Event {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    // Keeping temporarily during migration if code still uses it
     private String ticketmasterId;
+
+    @Column(name = "external_id")
+    private String externalId;
+
+    @Column(nullable = false)
+    private String provider;
 
     private String title;
     private String category;
@@ -32,6 +41,4 @@ public class Event {
     private String venueName;
     private String latitude;
     private String longitude;
-
 }
-

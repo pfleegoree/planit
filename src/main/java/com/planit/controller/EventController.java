@@ -2,6 +2,7 @@ package com.planit.controller;
 
 import com.planit.model.Event;
 import com.planit.repository.EventRepository;
+import com.planit.service.SeatGeekService;
 import com.planit.service.TicketmasterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -24,20 +25,21 @@ public class EventController {
     @Autowired
     private TicketmasterService ticketmasterService;
 
+    @Autowired
+    private SeatGeekService seatGeekService;
+
     @GetMapping("/events")
     public List<Event> getEvents(
-            // supports ?category=Music or ?category=Music&category=Sports or ?category=All
-            @RequestParam(value="category", required=false) List<String> categories,
-            // supports ?genre=Rock or ?genre=Rock&genre=Jazz or ?genre=Rock,Jazz
-            @RequestParam(value="genre", required=false) List<String> genres
+            @RequestParam(value = "category", required = false) List<String> categories,
+            @RequestParam(value = "genre", required = false) List<String> genres
     ) {
-        // normalize and drop any "All" placeholders
         if (categories != null) {
             categories = categories.stream()
                     .filter(s -> s != null && !s.trim().isEmpty() && !s.equalsIgnoreCase("all"))
                     .collect(Collectors.toList());
             if (categories.isEmpty()) categories = null;
         }
+
         if (genres != null) {
             genres = genres.stream()
                     .filter(s -> s != null && !s.trim().isEmpty())
@@ -45,7 +47,6 @@ public class EventController {
             if (genres.isEmpty()) genres = null;
         }
 
-        // decide which repository call to make
         if (categories == null && genres == null) {
             return eventRepository.findAll();
         }
@@ -55,17 +56,39 @@ public class EventController {
         if (categories != null) {
             return eventRepository.findByCategoryIn(categories);
         }
-        // only genres provided
+
         return eventRepository.findByGenreIn(genres);
     }
 
-    @PostMapping("/fetch-events")
-    public ResponseEntity<String> fetchNow(@RequestHeader("X-Admin-Token") String token) {
+    @PostMapping("/fetch-ticketmaster")
+    public ResponseEntity<String> fetchTicketmaster(@RequestHeader("X-Admin-Token") String token) {
         if (!token.equals(System.getenv("ADMIN_TOKEN"))) {
             return ResponseEntity.status(403).body("Forbidden");
         }
+
         ticketmasterService.fetchAndSaveEvents();
         return ResponseEntity.ok("Ticketmaster fetch triggered");
     }
 
+    @PostMapping("/fetch-seatgeek")
+    public ResponseEntity<String> fetchSeatGeek(@RequestHeader("X-Admin-Token") String token) {
+        if (!token.equals(System.getenv("ADMIN_TOKEN"))) {
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+
+        seatGeekService.fetchAndSaveEvents();
+        return ResponseEntity.ok("SeatGeek fetch triggered");
+    }
+
+    @PostMapping("/fetch-all-events")
+    public ResponseEntity<String> fetchAllEvents(@RequestHeader("X-Admin-Token") String token) {
+        if (!token.equals(System.getenv("ADMIN_TOKEN"))) {
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+
+        ticketmasterService.fetchAndSaveEvents();
+        seatGeekService.fetchAndSaveEvents();
+
+        return ResponseEntity.ok("Ticketmaster + SeatGeek fetch triggered");
+    }
 }

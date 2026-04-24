@@ -2,8 +2,9 @@ package com.planit.controller;
 
 import com.planit.model.Event;
 import com.planit.repository.EventRepository;
-import com.planit.service.SeatGeekService;
+import com.planit.service.MindbodyService;
 import com.planit.service.TicketmasterService;
+// import com.planit.service.SeatGeekService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,10 @@ public class EventController {
     private TicketmasterService ticketmasterService;
 
     @Autowired
-    private SeatGeekService seatGeekService;
+    private MindbodyService mindbodyService;
+
+    // @Autowired
+    // private SeatGeekService seatGeekService;
 
     @GetMapping("/events")
     public List<Event> getEvents(
@@ -70,6 +74,17 @@ public class EventController {
         return ResponseEntity.ok("Ticketmaster fetch triggered");
     }
 
+    @PostMapping("/fetch-mindbody")
+    public ResponseEntity<String> fetchMindbody(@RequestHeader("X-Admin-Token") String token) {
+        if (!token.equals(System.getenv("ADMIN_TOKEN"))) {
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+
+        mindbodyService.fetchAndSaveEvents();
+        return ResponseEntity.ok("Mindbody fetch triggered");
+    }
+
+    /*
     @PostMapping("/fetch-seatgeek")
     public ResponseEntity<String> fetchSeatGeek(@RequestHeader("X-Admin-Token") String token) {
         if (!token.equals(System.getenv("ADMIN_TOKEN"))) {
@@ -79,6 +94,7 @@ public class EventController {
         seatGeekService.fetchAndSaveEvents();
         return ResponseEntity.ok("SeatGeek fetch triggered");
     }
+    */
 
     @PostMapping("/fetch-all-events")
     public ResponseEntity<String> fetchAllEvents(@RequestHeader("X-Admin-Token") String token) {
@@ -87,8 +103,8 @@ public class EventController {
         }
 
         ticketmasterService.fetchAndSaveEvents();
-        seatGeekService.fetchAndSaveEvents();
+        mindbodyService.fetchAndSaveEvents();
 
-        return ResponseEntity.ok("Ticketmaster + SeatGeek fetch triggered");
+        return ResponseEntity.ok("Ticketmaster + Mindbody fetch triggered");
     }
 }

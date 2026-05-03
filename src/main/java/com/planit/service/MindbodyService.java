@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 @Service
@@ -72,8 +74,15 @@ public class MindbodyService {
             String startRaw = mindbodyClass.path("StartDateTime").asText(null);
             String endRaw   = mindbodyClass.path("EndDateTime").asText(null);
 
-            event.setStartTime(startRaw != null ? OffsetDateTime.parse(startRaw).toInstant().toString() : null);
-            event.setEndTime(endRaw   != null ? OffsetDateTime.parse(endRaw).toInstant().toString()   : null);
+            ZoneId zone = ZoneId.of("America/Chicago");
+
+            event.setStartTime(startRaw != null
+                    ? LocalDateTime.parse(startRaw).atZone(zone).toInstant().toString()
+                    : null);
+
+            event.setEndTime(endRaw != null
+                    ? LocalDateTime.parse(endRaw).atZone(zone).toInstant().toString()
+                    : null);
 
             event.setUrl(null);
 

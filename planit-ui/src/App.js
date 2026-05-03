@@ -89,6 +89,7 @@ export default function App() {
           return {
             id:       evt.id,
             title:    evt.title,
+            venue:    evt.venueName || evt.venue_name,
             category: evt.category || 'Uncategorized',
             genre:    evt.genre,
             start:    toZonedTime(utcStart, tz),
@@ -197,6 +198,14 @@ export default function App() {
          max={maxDate}
          scrollToTime={scrollToTime}
          style={{ height: '90%' }}
+         components={{
+           event: ({ event }) => (
+             <div>
+               <div style={{ fontWeight: 'bold' }}>{event.title}</div>
+               <div style={{ fontSize: '12px', opacity: 0.8 }}>{event.venue}</div>
+             </div>
+           )
+         }}
        />
       </div>
 
